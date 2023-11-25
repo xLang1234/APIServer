@@ -1,48 +1,40 @@
 import express from "express";
 import routes from "./routes/index.js";
-import connectDB from "./config/db.js";
 import logger from "./logger.js";
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+
+dotenv.config();
 
 const app = express();
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use("/", routes);
 const port = process.env.PORT || 3000;
 
-connectDB();
-app.use(express.json());
+const dbUrl = process.env.MONGODB_ATLAS_URI;
 
-app.use("/", routes);
-
-app.listen(port, () => {
-  logger.info(`Server running on http://localhost:${port}`);
-});
-
-function listAllRoutes() {
-  const routes = [];
-
-  app._router.stack.forEach((middleware) => {
-    if (middleware.route) {
-      // routes registered directly on the app
-      routes.push({
-        path: middleware.route.path,
-        method: Object.keys(middleware.route.methods)[0].toUpperCase(),
-      });
-    } else if (middleware.name === "router") {
-      // router middleware
-      middleware.handle.stack.forEach((handler) => {
-        if (handler.route) {
-          const routePath = middleware.regexp.exec(handler.route.path)
-            ? middleware.regexp.exec(handler.route.path)[0].replace("\\", "")
-            : "";
-          const completePath = routePath + handler.route.path;
-          routes.push({
-            path: completePath,
-            method: Object.keys(handler.route.methods)[0].toUpperCase(),
-          });
-        }
-      });
-    }
-  });
-
-  return routes;
+async function connectDB() {
+  try {
+    await mongoose.connect(dbUrl, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    console.log("Connected to MongoDB Atlas");
+    app.listen(port, () => {
+      logger.info(`Server running on http://localhost:${port}`);
+    });
+  } catch (e) {
+    console.error("Error connecting to MongoDB Atlas:", e);
+    process.exit(1);
+  }
 }
 
-console.log(listAllRoutes());
+const db = mongoose.connection;
+mongoose.set("debug", true);
+
+db.on("error", (err) => console.error("Mongoose connection error:", err));
+
+(async () => {
+  await connectDB();
+})();

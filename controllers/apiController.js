@@ -1,17 +1,15 @@
-import db from "../config/db.js";
-export function getData(req, res) {}
+import { getAllData, postDataModel } from "../services/apiService.js";
+export async function getData(req, res) {
+  await getAllData().then((data) => {
+    res.json(data);
+  });
+}
 
-export function postData(req, res) {
+export async function postData(req, res) {
   console.log(
     "TCL  ~ file: apiController.js:32 ~ postData ~ req.body",
     req.body
   );
-  db.collection("data").insertOne(req.body, (err, result) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send("Error saving data to database");
-    } else {
-      res.status(200).send(result.ops[0]);
-    }
-  });
+  await postDataModel(req.body);
+  res.json({ message: "Data saved successfully" });
 }
